@@ -44,11 +44,24 @@ jobs:
           cd ..
           unzip -t "${OUTPUT_NAME}"
 
-      - name: Upload Word document
+      - name: Upload Word document archive
         uses: actions/upload-artifact@v4
         with:
           name: defence-article-word
           path: ${{ env.OUTPUT_NAME }}
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload directly usable DOCX package
+        uses: actions/upload-artifact@v4
+        with:
+          name: defence-article-direct-docx
+          path: |
+            ooxml/[Content_Types].xml
+            ooxml/_rels/**
+            ooxml/docProps/**
+            ooxml/word/**
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
 
