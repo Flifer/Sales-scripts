@@ -1,0 +1,67 @@
+name: Build defence article DOCX
+
+on:
+  push:
+    branches:
+      - temp-docx-article-20260805
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  OUTPUT_NAME: Oboronna_zakupivlia_viiskovoi_chastyny.docx
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Generate OOXML package
+        run: python .github/scripts/generate_defence_article.py
+
+      - name: Validate XML parts
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          for path in Path('ooxml').rglob('*.xml'):
+              ET.parse(path)
+              print('OK', path)
+          PY
+
+      - name: Package DOCX
+        run: |
+          cd ooxml
+          zip -q -r "../${OUTPUT_NAME}" .
+          cd ..
+          unzip -t "${OUTPUT_NAME}"
+
+      - name: Upload Word document
+        uses: actions/upload-artifact@v4
+        with:
+          name: defence-article-word
+          path: ${{ env.OUTPUT_NAME }}
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Commit generated Word document to branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p generated
+          cp "${OUTPUT_NAME}" generated/
+          git add generated/"${OUTPUT_NAME}"
+          if git diff --cached --quiet; then
+            echo "No generated file changes"
+          else
+            git commit -m "Generate defence procurement article Word file"
+            git push
+          fi
